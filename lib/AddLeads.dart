@@ -393,12 +393,13 @@ class _AddLeadScreenState extends State<AddLeads>
                         if (value == null || value.isEmpty) {
                           return 'Please Enter Email';
                         } else if (!RegExp(
-                            r"^[a-z][a-z0-9.!#$%&'*+/=?^_`{|}~-]*@[a-z0-9]+\.[a-z]+$")
+                            r"^[a-zA-Z][a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]*@[a-zA-Z0-9]+\.[a-zA-Z]+$")
                             .hasMatch(value)) {
                           return 'Please enter a valid email address';
                         }
                         return null;
                       },
+
                     ),
                     const SizedBox(height: 10),
                     TextFormField(
@@ -657,7 +658,8 @@ class _AddLeadScreenState extends State<AddLeads>
 
   void _submit() async {
     if (_formKey.currentState!.validate()) {
-    await _getCurrentLocation(); // Fetch location
+      FocusScope.of(context).unfocus();
+  //  await _getCurrentLocation(); // Fetch location
       showLoadingDialog(context);
       _validateTotalItems();
 
@@ -709,11 +711,11 @@ class _AddLeadScreenState extends State<AddLeads>
           // ScaffoldMessenger.of(context).showSnackBar(
           //   const SnackBar(content: Text('Failed to insert lead data.')),
           // );
-          CommonStyles.showCustomToastMessageLong('Failed to Add Lead Data.', context, 1, 2);
-          // Navigator.push(
-          //   context,
-          //   MaterialPageRoute(builder: (context) => const HomeScreen()),
-          // );
+          CommonStyles.showCustomToastMessageLong('Failed to Add Client Visit Data.', context, 1, 2);
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          );
           return;
         }
 
@@ -774,7 +776,7 @@ class _AddLeadScreenState extends State<AddLeads>
             );
           });
         } else {
-          CommonStyles.showCustomToastMessageLong('Lead added successfully.', context, 0, 2);
+          CommonStyles.showCustomToastMessageLong('Client Visit added successfully.', context, 0, 2);
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const HomeScreen()),

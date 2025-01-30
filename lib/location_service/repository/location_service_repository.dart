@@ -9,7 +9,7 @@ class LocationServiceRepository {
       // Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        throw ('Location services are disabled. Please enable them in settings.');
+        //throw ('Location services are disabled. Please enable them in settings.'); //TODO: Add custom error message
       }
 
       // Check current location permission

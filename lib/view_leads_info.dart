@@ -85,7 +85,9 @@ class _ViewLeadsInfoState extends State<ViewLeadsInfo> {
       throw Exception('catch: ${e.toString()}');
     }
   }
-  Future<void> openLocalFileByPath(BuildContext context, String? filePath) async {
+
+  Future<void> openLocalFileByPath(
+      BuildContext context, String? filePath) async {
     print('openLocalFileByPath: $filePath');
     if (filePath != null && filePath.isNotEmpty) {
       final file = File(filePath);
@@ -117,7 +119,6 @@ class _ViewLeadsInfoState extends State<ViewLeadsInfo> {
       );
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -260,45 +261,11 @@ class _ViewLeadsInfoState extends State<ViewLeadsInfo> {
               //   },
               // ),
 
-
               const SizedBox(height: 12),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Column updatedDetails(LeadInfoModel lead) {
-    return Column(
-      children: [
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: CommonStyles.listEvenColor,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Updated Details:',
-                style: CommonStyles.txStyF16CpFF5,
-              ),
-              const SizedBox(height: 10),
-              updatedDetailItem(
-                  label: 'Updated At',
-                  data: CommonStyles.formatDateString(lead.createdDate)),
-              updatedDetailItem(
-                label: 'Updated By',
-                data: username,
-              )
-            ],
-          ),
-        ),
-      ],
     );
   }
 
@@ -310,6 +277,27 @@ class _ViewLeadsInfoState extends State<ViewLeadsInfo> {
             style: CommonStyles.txStyF14CbFF5
                 .copyWith(color: CommonStyles.dataTextColor)),
       ],
+    );
+  }
+
+  Widget userItem(
+      {required String label, String? data, bool isSpaceNeeded = true}) {
+    if (data == null || data.isEmpty) {
+      return const SizedBox();
+    }
+    return Container(
+      padding: EdgeInsets.only(bottom: isSpaceNeeded ? 5 : 0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('$label : ', style: CommonStyles.txStyF14CpFF),
+          Flexible(
+            child: Text(data,
+                style: CommonStyles.txStyF14CbFF5
+                    .copyWith(color: CommonStyles.dataTextColor)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -430,12 +418,13 @@ class _ViewLeadsInfoState extends State<ViewLeadsInfo> {
                           width: 70,
                           height: 70,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => SvgPicture.asset(
-                            'assets/fileuploadicon.svg',
-                            width: 70,
-                            height: 70,
-                            color: CommonStyles.btnBlueBgColor,
-                          ),
+                          errorBuilder: (context, error, stackTrace) =>
+                              SvgPicture.asset(
+                                'assets/fileuploadicon.svg',
+                                width: 70,
+                                height: 70,
+                                color: CommonStyles.btnBlueBgColor,
+                              ),
                         ),
                       ),
                       // Text(
@@ -448,7 +437,6 @@ class _ViewLeadsInfoState extends State<ViewLeadsInfo> {
               ).toList(),
             ],
           )
-
         ],
       ),
     );
@@ -522,71 +510,74 @@ class _ViewLeadsInfoState extends State<ViewLeadsInfo> {
         color: CommonStyles.listOddColor,
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Text(
-              //   '${lead.name}',
-              //   style: CommonStyles.txStyF16CpFF5,
-              // ),
-              updatedDetailItem(
-                  label: 'Name',
-                  data: lead.name),
-              GestureDetector(
-                onTap: () => _openMap(lead.latitude!, lead.longitude!),
-                child: const Icon(Icons.location_on,
-                    color: CommonStyles.formFieldErrorBorderColor),
-              ),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                userItem(label: 'Name', data: lead.name),
+                userItem(label: 'Company Name', data: lead.companyName),
+                userItem(label: 'Email', data: lead.email),
+                userItem(label: 'Mobile Number', data: lead.phoneNumber),
+                userItem(
+                    label: 'Visited On',
+                    data: formatDateString(lead.createdDate)),
+                userItem(
+                    label: 'Comment',
+                    isSpaceNeeded: false,
+                    data: '${lead.comments}'),
+
+                /* updatedDetailItem(label: 'Name', data: lead.name),
+                if (lead.companyName != null)
+                  // listCustomText(
+                  //   '${lead.companyName}',
+                  // ),
+                  updatedDetailItem(
+                      label: 'Company Name', data: lead.companyName),
+                const SizedBox(height: 5),
+                if (lead.email != null)
+                  // listCustomText(
+                  //   '${lead.email}',
+                  // ),
+                  updatedDetailItem(
+                      label: 'Email', data: lead.email), // lead.email
+                const SizedBox(height: 5),
+                if (lead.phoneNumber != null)
+                  // listCustomText(
+                  //   '${lead.phoneNumber}',
+                  // ),
+                  updatedDetailItem(
+                      label: 'Mobile Number', data: lead.phoneNumber),
+                const SizedBox(height: 5),
+                updatedDetailItem(
+                    label: 'Visited On',
+                    data: formatDateString(lead.createdDate)),
+                const SizedBox(height: 5),
+                if (lead.comments != null && lead.comments!.isNotEmpty) ...[
+                  const Text('Comment:',
+                      style: TextStyle(
+                          fontSize: 16, color: CommonStyles.primaryTextColor)),
+                  const SizedBox(height: 3),
+                  Flexible(
+                      child: Text('${lead.comments}',
+                          style: CommonStyles.txStyF14CbFF5
+                              .copyWith(color: CommonStyles.dataTextColor))),
+                ], */
+              ],
+            ),
           ),
-          const SizedBox(height: 5),
-          if (lead.companyName != null)
-          // listCustomText(
-          //   '${lead.companyName}',
-          // ),
-            updatedDetailItem(
-                label: 'Company Name',
-                data: lead.companyName),
-          const SizedBox(height: 5),
-          if (lead.email != null)
-          // listCustomText(
-          //   '${lead.email}',
-          // ),
-            updatedDetailItem(
-                label: 'Email',
-                data: lead.email), // lead.email
-          const SizedBox(height: 5),
-          if (lead.phoneNumber != null)
-          // listCustomText(
-          //   '${lead.phoneNumber}',
-          // ),
-            updatedDetailItem(
-                label: 'Mobile Number',
-                data: lead.phoneNumber),
-          const SizedBox(height: 5),
-          updatedDetailItem(
-              label: 'Visited On',
-              data: formatDateString(lead.createdDate)),
-          const SizedBox(height: 5),
-          if (lead.comments != null && lead.comments!.isNotEmpty) ...[
-            const Text('Comment:',
-                style: TextStyle(
-                    fontSize: 16, color: CommonStyles.primaryTextColor)),
-            const SizedBox(height: 3),
-            Flexible(child: Text('${lead.comments}', style: CommonStyles.txStyF14CbFF5.copyWith(color: CommonStyles.dataTextColor))),
-          ],
-
-
-
+          GestureDetector(
+            onTap: () => _openMap(lead.latitude!, lead.longitude!),
+            child: const Icon(Icons.location_on,
+                color: CommonStyles.formFieldErrorBorderColor),
+          ),
         ],
       ),
     );
   }
-
 
   String? formatDateString(String? date) {
     print('date: $date');
@@ -603,6 +594,7 @@ class _ViewLeadsInfoState extends State<ViewLeadsInfo> {
     }
     return date;
   }
+
   Container leadInfoShimmer({double? height = 130}) {
     return Container(
       height: height,
@@ -667,8 +659,9 @@ class _ViewLeadsInfoState extends State<ViewLeadsInfo> {
       Navigator.push(
         context,
         MaterialPageRoute(
-            builder: (context) => ExcelViewer( filePath: filePath,)
-        ),
+            builder: (context) => ExcelViewer(
+              filePath: filePath,
+            )),
       );
       // try {
       //   final result = await OpenFile.open(filePath);
@@ -685,6 +678,4 @@ class _ViewLeadsInfoState extends State<ViewLeadsInfo> {
       );
     }
   }
-
 }
-
