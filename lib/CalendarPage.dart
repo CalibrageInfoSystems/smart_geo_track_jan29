@@ -413,8 +413,16 @@ print('weekOffCode====$weekOffCode');
         // );
       });
     } else {
+      if (leaveCount == 2){
+        CommonStyles.showCustomToastMessageLong('Leave Deleted Successfully!', context, 0, 2);
+
+      }
+      else if (leaveCount == 5){
+        CommonStyles.showCustomToastMessageLong(' Work from Office Deleted Successfully!', context, 0, 2);
+
+      }
       // If no internet, show a toast message and navigate
-      CommonStyles.showCustomToastMessageLong('Please Check Your Internet Connection.', context, 1, 5);
+      // CommonStyles.showCustomToastMessageLong('Please Check Your Internet Connection.', context, 1, 5);
       print("Please check your internet connection.");
       Navigator.push(
         context,

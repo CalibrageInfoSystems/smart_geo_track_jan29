@@ -847,22 +847,38 @@ class _HomeScreenState extends State<HomeScreen> {
         required DateTime lastDate,
         required DateTime initialDate,
       }) {
+    DateTime parsedInitialDate;
+
+    try {
+      parsedInitialDate = calenderDate != null
+          ? DateFormat('dd/MM/yyyy').parse(calenderDate!)
+          : initialDate;
+
+      // Ensure parsedInitialDate is within the allowed range
+      if (parsedInitialDate.isBefore(firstDate) || parsedInitialDate.isAfter(lastDate)) {
+        parsedInitialDate = initialDate; // Reset to initialDate if out of range
+      }
+    } catch (e) {
+      parsedInitialDate = initialDate; // Fallback in case of parsing error
+    }
+
     showDatePicker(
       context: context,
-      initialDate: calenderDate != null
-          ? DateFormat('dd/MM/yyyy').parse(calenderDate!)
-          : initialDate, // Use calenderDate if available, else today's date
+      initialDate: parsedInitialDate,
       firstDate: firstDate,
       lastDate: lastDate,
     ).then((selectedDate) {
       if (selectedDate != null) {
         setState(() {
-          calenderDate = DateFormat('dd/MM/yyyy').format(selectedDate); // Update calendar date
-          fetchdatewiseleads(calenderDate!, calenderDate!); // Fetch leads for selected date
+          calenderDate = DateFormat('dd/MM/yyyy').format(selectedDate);
+         String calender_Date = DateFormat('yyyy-MM-dd').format(selectedDate);
+          print('calenderDate===${calender_Date}'); // Debug print
+          fetchdatewiseleads(calender_Date!, calender_Date!); // Fetch leads
         });
       }
     });
   }
+
 
 
   // Future<void> launchDatePicker(BuildContext context,
@@ -1407,7 +1423,7 @@ appendLog('Service started successfully!');
 
     try {
       // Call getCountOfHits method and await it
-      await getCountOfHits(date);
+      await getCountOfHits(context,date);
     } catch (e) {
       print("Error during sync: $e");
     } finally {
@@ -1416,16 +1432,15 @@ appendLog('Service started successfully!');
     }
   }
 // Fetch total hits count
-  Future<void> getCountOfHits(String? date) async {
+  Future<void> getCountOfHits(BuildContext context, String? date) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
     String url = '$baseUrl$Getcount';
     print('===========>${url}');
 
-    // Use null for the `date` key if date is null, otherwise include its value
     Map<String, dynamic> syncDataMap = {
       "userId": '$userID',
-      "date": date, // Will be null if `date` is null
+      "date": date,
     };
 
     print('===========>${jsonEncode(syncDataMap)}');
@@ -1437,13 +1452,13 @@ appendLog('Service started successfully!');
     );
 
     if (response.statusCode == 200) {
-      // Parse the response body
       final data = jsonDecode(response.body);
 
       if (data['isSuccess']) {
         List<dynamic> listResult = data['listResult'];
 
-        // Iterate through each result and call the appropriate sync method if count > 0
+        bool hasSyncedData = false; // Flag to track if any sync happens
+
         for (var result in listResult) {
           var holidayConfig = result['holidayConfiguration'];
           var shifts = result['shifts'];
@@ -1451,24 +1466,33 @@ appendLog('Service started successfully!');
 
           if (holidayConfig['count'] > 0) {
             print("counts: syncHoliday");
-            await syncHoliday(context,date); // Sync Holiday
+            await syncHoliday(context, date);
+            hasSyncedData = true;
           }
 
           if (shifts['count'] > 0) {
             print("counts: syncShift");
-            await syncShift(date); // Sync Shift
+            await syncShift(date);
+            hasSyncedData = true;
           }
 
           if (userWeekOffs['count'] > 0) {
             print("counts: userWeekOffs");
-            await syncUserWeekOff(date); // Sync Shift
+            await syncUserWeekOff(date);
+            hasSyncedData = true;
           }
+        }
+
+        if (hasSyncedData) {
           DateTime now = DateTime.now();
-          String formattedDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
-          print("Formatted Date and Time: $formattedDate");
-      String currentDate = getCurrentDate(); // Assume this function returns the current date in the required format
-          await prefs.setString('PREVIOUS_SYNC_DATE', currentDate);
+          String formattedDate =
+          DateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS").format(now);
+          await prefs.setString('PREVIOUS_SYNC_DATE', formattedDate);
           print('Sync Date Saved: $formattedDate');
+        } else {
+          // Show toast if no data was synced
+          CommonStyles.showCustomToastMessageLong('No data available for sync.', context, 0, 2);
+         // Fluttertoast.showToast(msg: "No data available for sync");
         }
       } else {
         print("Failed to retrieve counts: ${data['endUserMessage']}");
@@ -2114,14 +2138,24 @@ appendLog('Service started successfully!');
     }
   }
 
+  // Future<void> insertUserWeekOffData(List<dynamic> listResult) async {
+  //   await dataAccessHandler.insertOrUpdateData(
+  //     'UserWeekOffXref', // Table name
+  //     List<Map<String, dynamic>>.from(listResult), // Ensure the data is in the correct format
+  //     'Code', // Assuming 'id' is the primary key field
+  //   );
+  // }
   Future<void> insertUserWeekOffData(List<dynamic> listResult) async {
-    await dataAccessHandler.insertOrUpdateData(
+    final dataAccessHandler =
+    Provider.of<DataAccessHandler>(context, listen: false);
+    await dataAccessHandler.insertOrUpdateweekxrefData(
       'UserWeekOffXref', // Table name
-      List<Map<String, dynamic>>.from(listResult), // Ensure the data is in the correct format
-      'Code', // Assuming 'id' is the primary key field
+      List<Map<String, dynamic>>.from(
+          listResult), // Ensure the data is in the correct format
+      'id',
+      // Assuming 'id' is the primary key field
     );
   }
-
   Future<void> startMasterSync() async {
     print('Master sync  called');
     SharedPreferences sharedPreferences = await SharedPreferences.getInstance();

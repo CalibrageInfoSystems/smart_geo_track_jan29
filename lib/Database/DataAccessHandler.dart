@@ -110,6 +110,11 @@ class DataAccessHandler with ChangeNotifier {
     await db.transaction((txn) async {
       for (var item in data) {
         print('Processing item: ${item.toString()}');
+        print('Processing item serverUpdatedStatus: ${item['serverUpdatedStatus']}');
+        // Check if serverUpdatedStatus is 0, then update it to 1
+        if (item.containsKey('serverUpdatedStatus') && item['serverUpdatedStatus'] == 0 &&  item['serverUpdatedStatus'] == 'false') {
+          item['serverUpdatedStatus'] = 1;
+        }
 
         // Check if a record with the same ID exists
         var existingRecord = await txn.query(
@@ -117,7 +122,7 @@ class DataAccessHandler with ChangeNotifier {
           where: '$idField = ?',
           whereArgs: [item[idField]],
         );
-
+        print('Updated existing record in $tableName with $idField = ${item[idField]}');
         if (existingRecord.isNotEmpty) {
           // If the record exists, update it
           await txn.update(
@@ -135,6 +140,39 @@ class DataAccessHandler with ChangeNotifier {
       }
     });
   }
+
+  // Future<void> insertOrUpdateData(
+  //     String tableName, List<Map<String, dynamic>> data, String idField) async {
+  //   final db = await DatabaseHelper.instance.database;
+  //
+  //   await db.transaction((txn) async {
+  //     for (var item in data) {
+  //       print('Processing item: ${item.toString()}');
+  //
+  //       // Check if a record with the same ID exists
+  //       var existingRecord = await txn.query(
+  //         tableName,
+  //         where: '$idField = ?',
+  //         whereArgs: [item[idField]],
+  //       );
+  //
+  //       if (existingRecord.isNotEmpty) {
+  //         // If the record exists, update it
+  //         await txn.update(
+  //           tableName,
+  //           item,
+  //           where: '$idField = ?',
+  //           whereArgs: [item[idField]],
+  //         );
+  //         print('Updated existing record in $tableName with $idField = ${item[idField]}');
+  //       } else {
+  //         // If the record does not exist, insert it
+  //         await txn.insert(tableName, item);
+  //         print('Inserted new record into $tableName with $idField = ${item[idField]}');
+  //       }
+  //     }
+  //   });
+  // }
   Future<void> insertOrUpdateweekxrefData(
       String tableName, List<Map<String, dynamic>> data, String idField) async {
     final db = await DatabaseHelper.instance.database;
@@ -143,13 +181,16 @@ class DataAccessHandler with ChangeNotifier {
       for (var item in data) {
         print('Processing item: ${item.toString()}');
         print('Processing item: ${item['code']}');
+
         // Check if a record with the same ID and Code exists
         var existingRecord = await txn.query(
           tableName,
           where: '$idField = ? AND code = ?',
-          whereArgs: [item['code']],
+          whereArgs: [item[idField], item['code']], // Fixed argument passing
         );
-        print('Processing item: ${existingRecord.toString()}');
+
+        print('Existing record: ${existingRecord.toString()}');
+
         if (existingRecord.isNotEmpty) {
           // If the record exists, update it
           await txn.update(
@@ -162,6 +203,11 @@ class DataAccessHandler with ChangeNotifier {
               'Updated existing record in $tableName with $idField = ${item[idField]} and code = ${item['code']}');
         } else {
           // If the record does not exist, insert it
+          // Ensure "serverUpdatedStatus" is set to 1 if it's false
+          if (item['serverUpdatedStatus'] == false) {
+            item['serverUpdatedStatus'] = 1;
+          }
+
           await txn.insert(tableName, item);
           print(
               'Inserted new record into $tableName with $idField = ${item[idField]} and code = ${item['code']}');
@@ -169,6 +215,41 @@ class DataAccessHandler with ChangeNotifier {
       }
     });
   }
+
+  // Future<void> insertOrUpdateweekxrefData(
+  //     String tableName, List<Map<String, dynamic>> data, String idField) async {
+  //   final db = await DatabaseHelper.instance.database;
+  //
+  //   await db.transaction((txn) async {
+  //     for (var item in data) {
+  //       print('Processing item: ${item.toString()}');
+  //       print('Processing item: ${item['code']}');
+  //       // Check if a record with the same ID and Code exists
+  //       var existingRecord = await txn.query(
+  //         tableName,
+  //         where: '$idField = ? AND code = ?',
+  //         whereArgs: [item['code']],
+  //       );
+  //       print('Processing item: ${existingRecord.toString()}');
+  //       if (existingRecord.isNotEmpty) {
+  //         // If the record exists, update it
+  //         await txn.update(
+  //           tableName,
+  //           item,
+  //           where: '$idField = ? AND code = ?',
+  //           whereArgs: [item[idField], item['code']],
+  //         );
+  //         print(
+  //             'Updated existing record in $tableName with $idField = ${item[idField]} and code = ${item['code']}');
+  //       } else {
+  //         // If the record does not exist, insert it
+  //         await txn.insert(tableName, item);
+  //         print(
+  //             'Inserted new record into $tableName with $idField = ${item[idField]} and code = ${item['code']}');
+  //       }
+  //     }
+  //   });
+  // }
 
 
   // Future<int> insertLead(Map<String, dynamic> leadData) async {
@@ -445,34 +526,88 @@ class DataAccessHandler with ChangeNotifier {
   //           })
   //       .toList();
   // }
-
   Future<List<Map<String, double>>> fetchLatLongsFromDatabase(
       String startDate, String endDate) async {
-    final db = await DatabaseHelper.instance.database;
+    print('Fetching lat/longs from database...');
+    print('Start Date: $startDate, End Date: $endDate');
 
-    // Assuming userID is retrieved from SharedPreferences or passed as an argument
+    // Get database instance
+    final db = await DatabaseHelper.instance.database;
+    print('Database instance retrieved.');
+
+    // Retrieve userID from SharedPreferences
     SharedPreferences prefs = await SharedPreferences.getInstance();
     int? userID = prefs.getInt('userID');
+    print('Retrieved userID: $userID');
 
-    // Perform the query with both date range and userID
+    if (userID == null) {
+      print('Error: userID is null. Returning empty list.');
+      return [];
+    }
+
+    // Construct SQL query manually for logging
+    String query = '''
+    SELECT Latitude, Longitude 
+    FROM GeoBoundaries 
+    WHERE DATE(CreatedDate) BETWEEN ? AND ? 
+      AND CreatedByUserId = ?
+  ''';
+    List<dynamic> whereArgs = [startDate, endDate, userID];
+
+    print('Executing query: $query');
+    print('Query Parameters: $whereArgs');
+
+    // Execute query
     List<Map<String, dynamic>> queryResult = await db.query(
       'GeoBoundaries',
       columns: ['Latitude', 'Longitude'],
       where: 'DATE(CreatedDate) BETWEEN ? AND ? AND CreatedByUserId = ?',
-      whereArgs: [startDate, endDate, userID], // Arguments for the WHERE clause
+      whereArgs: whereArgs,
     );
 
-    print('Distance query result: $queryResult');
+    print('Query executed successfully.');
+    print('Query Result: $queryResult');
 
-    // Convert the query result into a list of latitude/longitude maps
-    return queryResult
-        .map((row) => {
-      'lat': row['Latitude'] as double,
-      'lng': row['Longitude'] as double,
-    })
-        .toList();
+    // Convert result to List<Map<String, double>>
+    List<Map<String, double>> latLongList = queryResult.map((row) {
+      double lat = row['Latitude'] is double ? row['Latitude'] : (row['Latitude'] as num).toDouble();
+      double lng = row['Longitude'] is double ? row['Longitude'] : (row['Longitude'] as num).toDouble();
+
+      print('Processed lat/lng: $lat, $lng');
+      return {'lat': lat, 'lng': lng};
+    }).toList();
+
+    print('Final lat/long list: $latLongList');
+    return latLongList;
   }
 
+  // Future<List<Map<String, double>>> fetchLatLongsFromDatabase(
+  //     String startDate, String endDate) async {
+  //   final db = await DatabaseHelper.instance.database;
+  //
+  //   // Assuming userID is retrieved from SharedPreferences or passed as an argument
+  //   SharedPreferences prefs = await SharedPreferences.getInstance();
+  //   int? userID = prefs.getInt('userID');
+  //
+  //   // Perform the query with both date range and userID
+  //   List<Map<String, dynamic>> queryResult = await db.query(
+  //     'GeoBoundaries',
+  //     columns: ['Latitude', 'Longitude'],
+  //     where: 'DATE(CreatedDate) BETWEEN ? AND ? AND CreatedByUserId = ?',
+  //     whereArgs: [startDate, endDate, userID], // Arguments for the WHERE clause
+  //   );
+  //
+  //   print('Distance query result: $queryResult');
+  //
+  //   // Convert the query result into a list of latitude/longitude maps
+  //   return queryResult
+  //       .map((row) => {
+  //     'lat': row['Latitude'] as double,
+  //     'lng': row['Longitude'] as double,
+  //   })
+  //       .toList();
+  // }
+  //
 
 // Method to check if GeoBoundary has a point for the current date
   Future<bool> hasPointForToday() async {

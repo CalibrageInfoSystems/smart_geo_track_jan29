@@ -153,7 +153,6 @@ class _AddLeadScreenState extends State<AddLeads>
       _files.removeAt(index);
     });
   }
-
   Future<void> _getCurrentLocation() async {
     bool serviceEnabled;
     LocationPermission permission;
@@ -161,10 +160,14 @@ class _AddLeadScreenState extends State<AddLeads>
     // Check if GPS is enabled (Internet is not needed, only GPS)
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      CommonStyles.showCustomToastMessageLong('Location Services (GPS) are Disabled.Please Turn On Your Loaction Services.', context, 1, 2);
+      CommonStyles.showCustomToastMessageLong(
+        'Location Services (GPS) are Disabled. Please Turn On Your Location Services.',
+        context, 1, 2,
+      );
 
-     return Future.error('Location services (GPS) are disabled.');
-
+      // Do not return error, continue with null location
+      _currentPosition = null;
+      return;
     }
 
     // Check location permission
@@ -172,26 +175,74 @@ class _AddLeadScreenState extends State<AddLeads>
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        return Future.error('Location permissions are denied.');
+        CommonStyles.showCustomToastMessageLong(
+          'Location permission is required to get current location.',
+          context, 1, 2,
+        );
+        _currentPosition = null;
+        return;
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
-      return Future.error(
-          'Location permissions are permanently denied, we cannot request permissions.');
+      CommonStyles.showCustomToastMessageLong(
+        'Location permission is permanently denied. Enable it from app settings.',
+        context, 1, 2,
+      );
+      _currentPosition = null;
+      return;
     }
 
-    // Get current position using GPS (this works offline)
-    _currentPosition = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high, // Uses GPS
-    );
+    // Get current position using GPS
+    try {
+      _currentPosition = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+    } catch (e) {
+      print("Error getting location: $e");
+      _currentPosition = null;
+    }
   }
+
+  // Future<void> _getCurrentLocation() async {
+  //   bool serviceEnabled;
+  //   LocationPermission permission;
+  //
+  //   // Check if GPS is enabled (Internet is not needed, only GPS)
+  //   serviceEnabled = await Geolocator.isLocationServiceEnabled();
+  //   if (!serviceEnabled) {
+  //     CommonStyles.showCustomToastMessageLong('Location Services (GPS) are Disabled.Please Turn On Your Loaction Services.', context, 1, 2);
+  //
+  //    return Future.error('Location services (GPS) are disabled.');
+  //
+  //   }
+  //
+  //   // Check location permission
+  //   permission = await Geolocator.checkPermission();
+  //   if (permission == LocationPermission.denied) {
+  //     permission = await Geolocator.requestPermission();
+  //     if (permission == LocationPermission.denied) {
+  //       return Future.error('Location permissions are denied.');
+  //     }
+  //   }
+  //
+  //   if (permission == LocationPermission.deniedForever) {
+  //     return Future.error(
+  //         'Location permissions are permanently denied, we cannot request permissions.');
+  //   }
+  //
+  //   // Get current position using GPS (this works offline)
+  //   _currentPosition = await Geolocator.getCurrentPosition(
+  //     desiredAccuracy: LocationAccuracy.high, // Uses GPS
+  //   );
+  // }
 
   @override
   void initState() {
     super.initState();
 
     getuserdata();
+    _getCurrentLocation();
   }
 
   @override
@@ -342,7 +393,7 @@ class _AddLeadScreenState extends State<AddLeads>
                         if (value == null || value.isEmpty) {
                           return 'Please Enter Email';
                         } else if (!RegExp(
-                                r"^[a-z][a-z0-9.!#$%&'*+/=?^_`{|}~-]*@[a-z0-9]+\.[a-z]+$")
+                            r"^[a-z][a-z0-9.!#$%&'*+/=?^_`{|}~-]*@[a-z0-9]+\.[a-z]+$")
                             .hasMatch(value)) {
                           return 'Please enter a valid email address';
                         }
@@ -388,9 +439,9 @@ class _AddLeadScreenState extends State<AddLeads>
                                       alignment: Alignment.center,
                                       child: Column(
                                         mainAxisAlignment:
-                                            MainAxisAlignment.center,
+                                        MainAxisAlignment.center,
                                         crossAxisAlignment:
-                                            CrossAxisAlignment.center,
+                                        CrossAxisAlignment.center,
                                         children: [
                                           SvgPicture.asset(
                                             "assets/add_a_photo.svg",
@@ -424,9 +475,9 @@ class _AddLeadScreenState extends State<AddLeads>
                                       alignment: Alignment.center,
                                       child: Column(
                                         mainAxisAlignment:
-                                            MainAxisAlignment.center,
+                                        MainAxisAlignment.center,
                                         crossAxisAlignment:
-                                            CrossAxisAlignment.center,
+                                        CrossAxisAlignment.center,
                                         children: [
                                           SvgPicture.asset(
                                             "assets/fileuploadicon.svg",
@@ -511,9 +562,9 @@ class _AddLeadScreenState extends State<AddLeads>
                                         padding: const EdgeInsets.all(8),
                                         decoration: BoxDecoration(
                                           border:
-                                              Border.all(color: Colors.blue),
+                                          Border.all(color: Colors.blue),
                                           borderRadius:
-                                              BorderRadius.circular(8),
+                                          BorderRadius.circular(8),
                                           color: Colors.grey[100],
                                         ),
                                         child: Row(
@@ -527,7 +578,7 @@ class _AddLeadScreenState extends State<AddLeads>
                                                 style: const TextStyle(
                                                     fontSize: 14,
                                                     overflow:
-                                                        TextOverflow.ellipsis),
+                                                    TextOverflow.ellipsis),
                                               ),
                                             ),
                                           ],
@@ -606,18 +657,13 @@ class _AddLeadScreenState extends State<AddLeads>
 
   void _submit() async {
     if (_formKey.currentState!.validate()) {
-      await _getCurrentLocation();
+    await _getCurrentLocation(); // Fetch location
       showLoadingDialog(context);
       _validateTotalItems();
 
-      //  String? empCode = await fetchEmpCode(Username!, context);
-      //   String? empCode ="ROJATEST";
       final dataAccessHandler = Provider.of<DataAccessHandler>(context, listen: false);
 
-      print('empCode===$empCode');
-
       if (empCode == null) {
-        print('Error: EmpCode not found.');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Employee code not found.')),
         );
@@ -627,150 +673,124 @@ class _AddLeadScreenState extends State<AddLeads>
       String formattedDate = getCurrentDateInDDMMYYHHMMSS();
       String currentDate = getCurrentDate();
       String maxNumQuery = '''
-      SELECT MAX(CAST(SUBSTR(code, INSTR(code, '-') + 1) AS INTEGER)) AS MaxNumber 
-      FROM Leads WHERE DATE(CreatedDate) = '$currentDate'
+    SELECT MAX(CAST(SUBSTR(code, INSTR(code, '-') + 1) AS INTEGER)) AS MaxNumber 
+    FROM Leads WHERE DATE(CreatedDate) = '$currentDate'
     ''';
 
       int? maxSerialNumber = await dataAccessHandler.getOnlyOneIntValueFromDb(maxNumQuery);
-
       int serialNumber = (maxSerialNumber != null) ? maxSerialNumber + 1 : 1;
       String formattedSerialNumber = serialNumber.toString().padLeft(3, '0');
       String leadCode = 'L$empCode$formattedDate-$formattedSerialNumber';
 
-      print('LeadCode==$leadCode');
+      // Prepare lead data, handling null location
+      final leadData = {
+        'IsCompany': _isCompany ? 1 : 0,
+        'Code': leadCode,
+        'Name': _nameController.text,
+        'CompanyName': _isCompany ? _companyNameController.text : null,
+        'PhoneNumber': _phoneNumberController.text,
+        'Email': _emailController.text,
+        'Comments': _commentsController.text,
+        'Latitude': _currentPosition?.latitude, // Allow null values
+        'Longitude': _currentPosition?.longitude,
+        'Address': "Test",
+        'CreatedByUserId': userID,
+        'CreatedDate': DateTime.now().toIso8601String(),
+        'UpdatedByUserId': userID,
+        'UpdatedDate': DateTime.now().toIso8601String(),
+        'ServerUpdatedStatus': false,
+      };
 
-      print('_currentPosition==$_currentPosition');
-      // Check if _currentPosition is null before proceeding
-      if (_currentPosition != null) {
-        final leadData = {
-          'IsCompany': _isCompany ? 1 : 0,
-          'Code': leadCode,
-          'Name': _nameController.text,
-          'CompanyName': _isCompany ? _companyNameController.text : null,
-          'PhoneNumber': _phoneNumberController.text,
-          'Email': _emailController.text,
-          'Comments': _commentsController.text,
-          'Latitude': _currentPosition!.latitude,
-          'Longitude': _currentPosition!.longitude,
-          'Address' :"Test",
-          'CreatedByUserId': userID, // Ensure userID is not null
-          'CreatedDate': DateTime.now().toIso8601String(),
-          'UpdatedByUserId': userID, // Ensure userID is not null
-          'UpdatedDate': DateTime.now().toIso8601String(),
-          'ServerUpdatedStatus': false,
-        };
+      try {
+        int leadId = await dataAccessHandler.insertLead(leadData) ?? -1;
 
-        print('leadData======>$leadData');
+        if (leadId == -1) {
+          stopLoadingDialog(context);
+          // ScaffoldMessenger.of(context).showSnackBar(
+          //   const SnackBar(content: Text('Failed to insert lead data.')),
+          // );
+          CommonStyles.showCustomToastMessageLong('Failed to Add Lead Data.', context, 1, 2);
+          // Navigator.push(
+          //   context,
+          //   MaterialPageRoute(builder: (context) => const HomeScreen()),
+          // );
+          return;
+        }
 
-        try {
-          // Insert lead data into the database and check the result
-          int leadId = await dataAccessHandler.insertLead(leadData) ??
-              -1; // Add null check for database
+        // Handle images & files
+        for (var image in _imagepath) {
+          String fileLocation = image.path;
+          String fileExtension = '.jpg';
 
-          if (leadId == -1) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Failed to insert lead data.')),
-            );
-            return; // Exit if insertion fails
-          }
+          final fileData = {
+            'leadsCode': leadCode,
+            'FileName': fileLocation,
+            'FileLocation': fileLocation,
+            'FileExtension': fileExtension,
+            'IsActive': 1,
+            'CreatedByUserId': userID,
+            'CreatedDate': DateTime.now().toIso8601String(),
+            'UpdatedByUserId': userID,
+            'UpdatedDate': DateTime.now().toIso8601String(),
+            'ServerUpdatedStatus': false,
+          };
 
-          print('leadId======>$leadId');
+          await dataAccessHandler.insertFileRepository(fileData);
+        }
 
-          for (var image in _imagepath) {
-            // Ensure image is not null
-            String fileName =
-                'image_${DateTime.now().millisecondsSinceEpoch}.jpg';
-            String fileLocation = image.path;
-            String fileExtension = '.jpg';
-            print('===fileLocation $fileLocation');
+        // Handle file uploads
+        for (var file in _files) {
+          String fileExtension = path.extension(file.name);
+          String newFilePath = await _moveFileToCustomDirectory(file);
 
-            final fileData = {
-              'leadsCode': leadCode,
-              'FileName': fileLocation,
-              'FileLocation': fileLocation,
-              'FileExtension': fileExtension,
-              'IsActive': 1,
-              'CreatedByUserId': userID,
-              'CreatedDate': DateTime.now().toIso8601String(),
-              'UpdatedByUserId': userID,
-              'UpdatedDate': DateTime.now().toIso8601String(),
-              'ServerUpdatedStatus': false,
-            };
-            print('fileData======>$fileData');
-            await dataAccessHandler.insertFileRepository(fileData);
-          }
-// Handle _files as well with similar checks
-          for (var file in _files) {
-            String fileExtension = path.extension(file.name);
-            String? filePath = file.path;
+          File fileObj = File(newFilePath);
+          List<int> fileBytes = await fileObj.readAsBytes();
+          String base64String = base64Encode(fileBytes);
 
-            // Move file to custom directory
-            String newFilePath =  await _moveFileToCustomDirectory(file);
+          final fileData = {
+            'leadsCode': leadCode,
+            'FileName': path.basename(newFilePath),
+            'FileLocation': newFilePath,
+            'FileExtension': fileExtension,
+            'IsActive': 1,
+            'CreatedByUserId': userID,
+            'CreatedDate': DateTime.now().toIso8601String(),
+            'UpdatedByUserId': userID,
+            'UpdatedDate': DateTime.now().toIso8601String(),
+            'ServerUpdatedStatus': false,
+          };
 
-            // Load file from new path
-            File fileObj = File(newFilePath);
-            List<int> fileBytes = await fileObj.readAsBytes();
-            String base64String = base64Encode(fileBytes);
+          await dataAccessHandler.insertFileRepository(fileData);
+        }
 
-            final fileData = {
-              'leadsCode': leadCode,
-              'FileName': path.basename(newFilePath), // Just the file name
-              'FileLocation': newFilePath, // Updated path after moving the file
-              'FileExtension': fileExtension,
-              'IsActive': 1,
-              'CreatedByUserId': userID,
-              'CreatedDate': DateTime.now().toIso8601String(),
-              'UpdatedByUserId': userID,
-              'UpdatedDate': DateTime.now().toIso8601String(),
-              'ServerUpdatedStatus': false,
-            };
-
-            print('fileData======>$fileData');
-            await dataAccessHandler.insertFileRepository(fileData);
-          }
-
-          bool isConnected = await CommonStyles.checkInternetConnectivity();
-          if (isConnected) {
-            // Call your login function here
-            final syncService = SyncService(dataAccessHandler);
-            syncService.performRefreshTransactionsSync(context,3)
-                .whenComplete(() {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const HomeScreen()),
-              );
-            });
-          } else {
-            CommonStyles.showCustomToastMessageLong('Lead added successfully.', context, 0, 2);
-            print("Please check your internet connection.");
+        bool isConnected = await CommonStyles.checkInternetConnectivity();
+        if (isConnected) {
+          final syncService = SyncService(dataAccessHandler);
+          syncService.performRefreshTransactionsSync(context, 3)
+              .whenComplete(() {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const HomeScreen()),
             );
-            //showDialogMessage(context, "Please check your internet connection.");
-          }
-          // Trigger Sync for Leads and FileRepository
-          // final syncService = SyncService(dataAccessHandler);
-          // syncService.performRefreshTransactionsSync(context);
-
-          // Clear all input fields and images
-          _nameController.clear();
-          _companyNameController.clear();
-          _phoneNumberController.clear();
-          _emailController.clear();
-          _commentsController.clear();
-          _imagepath.clear();
-        } catch (e) {
-          print('Error inserting lead data: $e');
-          // Handle database insertion failure
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to insert lead data.')),
+          });
+        } else {
+          CommonStyles.showCustomToastMessageLong('Lead added successfully.', context, 0, 2);
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
           );
         }
-      } else {
-        // Location fetch failed
+
+        _nameController.clear();
+        _companyNameController.clear();
+        _phoneNumberController.clear();
+        _emailController.clear();
+        _commentsController.clear();
+        _imagepath.clear();
+      } catch (e) {
+        print('Error inserting lead data: $e');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to get location.')),
+          const SnackBar(content: Text('Failed to insert lead data.')),
         );
       }
     }
@@ -823,7 +843,7 @@ class _AddLeadScreenState extends State<AddLeads>
 
         // Specify folder path with 'documents' inside 'SmartGeoTrack'
         const String folderName = 'SmartGeoTrack/documents';
-       // Directory appDocDir =  Directory(Constants.originPath);;
+        // Directory appDocDir =  Directory(Constants.originPath);;
         Directory appDocDir =  await getApplicationDocumentsDirectory();
         // Check if the directory exists, if not, create it
         if (!await appDocDir.exists()) {
@@ -879,7 +899,7 @@ class _AddLeadScreenState extends State<AddLeads>
     if (_images.length + _files.length > 3) {
       setState(() {
         _errorMessage =
-            'You can upload a maximum of 3 images and files combined.';
+        'You can upload a maximum of 3 images and files combined.';
       });
     } else {
       setState(() {
@@ -922,7 +942,7 @@ class _AddLeadScreenState extends State<AddLeads>
 
   Future<String?> fetchEmpCode(String username, BuildContext context) async {
     final dataAccessHandler =
-        Provider.of<DataAccessHandler>(context, listen: false);
+    Provider.of<DataAccessHandler>(context, listen: false);
 
     // Use parameterized query to avoid SQL injection
     String empCodeQuery = 'SELECT EmpCode FROM UserInfos WHERE UserName = ?';
@@ -945,7 +965,7 @@ class _AddLeadScreenState extends State<AddLeads>
   Future<String> _moveFileToCustomDirectory(PlatformFile file) async {
     try {
       const String folderName = 'SmartGeoTrack/documents'; // Add 'documents' folder
-     // Directory appDocDir =  Directory(Constants.originPath);;
+      // Directory appDocDir =  Directory(Constants.originPath);;
       Directory appDocDir =   await getApplicationDocumentsDirectory();
       print('appDocDir: $appDocDir');
       // Check if the directory exists, if not, create it
@@ -966,5 +986,9 @@ class _AddLeadScreenState extends State<AddLeads>
       print('Error moving file: $e');
       return file.path!; // Fallback to the original path if something fails
     }
+  }
+
+  void stopLoadingDialog(BuildContext context) {
+    Navigator.of(context, rootNavigator: true).pop();
   }
 }
