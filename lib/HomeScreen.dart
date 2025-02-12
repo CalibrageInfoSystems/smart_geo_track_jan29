@@ -82,7 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
   double totalDistance = 0.0;
   bool isButtonEnabled = false;
   String? selectedOptionbottom = null; // Default selected option
-  DateTime selectedDatemark = DateTime.now(); // Default current date
+  DateTime selectedDatemark = DateTime.now().add(Duration(days: 1));// Default current date
   TextEditingController remarksController = TextEditingController();
   bool? isLeave ;
   int ? toastcount = 0;// Controller for remarks
@@ -732,8 +732,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<String> menuItems = [
     'Change Password',
+    'View Attendance',
     'Logout',
-    'View Attendance '
   ];
   List<String> dateItems = [
     'Today',
@@ -1464,9 +1464,14 @@ appendLog('Service started successfully!');
           var shifts = result['shifts'];
           var userWeekOffs = result['userWeekOffs'];
 
-          if (holidayConfig['count'] > 0) {
+          // if (holidayConfig['count'] > 0) {
+          //   print("counts: syncHoliday");
+          //   await syncHoliday(context, date);
+          //   hasSyncedData = true;
+          // }
+          if (holidayConfig['count'] != null && holidayConfig['count'] > 0) {
             print("counts: syncHoliday");
-            await syncHoliday(context, date);
+            await syncAllHolidays(context, date, holidayConfig['count']);
             hasSyncedData = true;
           }
 
@@ -1476,11 +1481,17 @@ appendLog('Service started successfully!');
             hasSyncedData = true;
           }
 
-          if (userWeekOffs['count'] > 0) {
-            print("counts: userWeekOffs");
-            await syncUserWeekOff(date);
+          // if (userWeekOffs['count'] > 0) {
+          //   print("counts: userWeekOffs");
+          //   await syncUserWeekOff(date);
+          //   hasSyncedData = true;
+          // }
+          if (userWeekOffs['count'] != null && userWeekOffs['count'] > 0) {
+            print("counts: ${userWeekOffs['count']}");
+            await syncAllUserWeekOffs(date, userWeekOffs['count']);
             hasSyncedData = true;
           }
+
         }
 
         if (hasSyncedData) {
@@ -1503,66 +1514,114 @@ appendLog('Service started successfully!');
   }
 
 
-  // Show toast message (Utility function)
-  static void showToast(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
-
-  Future<void> syncHoliday(BuildContext context, String? date) async {
+  Future<void> syncAllHolidays(BuildContext context, String? date, int count) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    int? userID = prefs.getInt('userID'); // Ensure userID is retrieved properly
+    int? userID = prefs.getInt('userID');
 
     if (userID == null) {
       print('Error: userID is null');
-      return; // Exit the function if userID is null
+      return;
     }
 
-    // Create sync data map with null-safe `date`
-    Map<String, dynamic> syncDataMap = {
-      "date": date, // This will remain `null` if `date` is null
-      "userId": '$userID',
-      "pageIndex": 1,
-    };
+    for (int pageIndex = 1; pageIndex <= count; pageIndex++) {
+      print('Syncing holidays for pageIndex: $pageIndex');
 
-    print('===========>Request Date: $date');
-    print('===========>Request Body: ${jsonEncode(syncDataMap)}');
+      Map<String, dynamic> syncDataMap = {
+        "date": date,
+        "userId": '$userID',
+        "pageIndex": pageIndex,
+      };
 
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl$SyncHoliday'),
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: jsonEncode(syncDataMap), // Pass the syncDataMap here
-      );
+      try {
+        final response = await http.post(
+          Uri.parse('$baseUrl$SyncHoliday'),
+          headers: <String, String>{
+            'Content-Type': 'application/json; charset=UTF-8',
+          },
+          body: jsonEncode(syncDataMap),
+        );
 
-      if (response.statusCode == 200) {
-        // Parse the response
-        final data = jsonDecode(response.body);
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
 
-        // Check if the response is successful
-        if (data['isSuccess']) {
-          print("Insert the list of holidays into the database");
+          if (data['isSuccess']) {
+            print("Received holiday data for pageIndex: $pageIndex");
 
-          // Insert or update the list of holidays into the database
-          await dataAccessHandler.insertOrUpdateData(
-            'HolidayConfiguration', // Table name
-            List<Map<String, dynamic>>.from(data['listResult']), // Ensure proper format
-            'id', // Assuming 'id' is the primary key field
-          );
+            // Insert the received data into the database
+            await dataAccessHandler.insertOrUpdateData(
+              'HolidayConfiguration',
+              List<Map<String, dynamic>>.from(data['listResult']),
+              'id',
+            );
+          } else {
+            print("Failed for pageIndex: $pageIndex - ${data['endUserMessage']}");
+          }
         } else {
-          print("Failed to retrieve holidays: ${data['endUserMessage']}");
+          throw Exception('Failed to sync holiday data from server for pageIndex: $pageIndex');
         }
-      } else {
-        throw Exception('Failed to sync holiday data from server: ${response.statusCode}');
+      } catch (e) {
+        print('Error syncing holidays for pageIndex $pageIndex: $e');
       }
-    } catch (e) {
-      print('Error during holiday sync: $e');
-      // You can also show a user-friendly message using a dialog or snackbar
     }
+
+    // Show success message after all pages are processed
+ CommonStyles.showCustomToastMessageLong('Holiday Sync is Successful', context, 0, 3);
   }
+
+
+  // Future<void> syncHoliday(BuildContext context, String? date) async {
+  //   SharedPreferences prefs = await SharedPreferences.getInstance();
+  //   int? userID = prefs.getInt('userID'); // Ensure userID is retrieved properly
+  //
+  //   if (userID == null) {
+  //     print('Error: userID is null');
+  //     return; // Exit the function if userID is null
+  //   }
+  //
+  //   // Create sync data map with null-safe `date`
+  //   Map<String, dynamic> syncDataMap = {
+  //     "date": date, // This will remain `null` if `date` is null
+  //     "userId": '$userID',
+  //     "pageIndex": 1,
+  //   };
+  //
+  //   print('===========>Request Date: $date');
+  //   print('===========>Request Body: ${jsonEncode(syncDataMap)}');
+  //
+  //   try {
+  //     final response = await http.post(
+  //       Uri.parse('$baseUrl$SyncHoliday'),
+  //       headers: <String, String>{
+  //         'Content-Type': 'application/json; charset=UTF-8',
+  //       },
+  //       body: jsonEncode(syncDataMap), // Pass the syncDataMap here
+  //     );
+  //
+  //     if (response.statusCode == 200) {
+  //       // Parse the response
+  //       final data = jsonDecode(response.body);
+  //
+  //       // Check if the response is successful
+  //       if (data['isSuccess']) {
+  //         print("Insert the list of holidays into the database");
+  //
+  //         // Insert or update the list of holidays into the database
+  //         await dataAccessHandler.insertOrUpdateData(
+  //           'HolidayConfiguration', // Table name
+  //           List<Map<String, dynamic>>.from(data['listResult']), // Ensure proper format
+  //           'id', // Assuming 'id' is the primary key field
+  //         );
+  //       } else {
+  //         print("Failed to retrieve holidays: ${data['endUserMessage']}");
+  //       }
+  //     } else {
+  //       throw Exception('Failed to sync holiday data from server: ${response.statusCode}');
+  //     }
+  //   } catch (e) {
+  //     print('Error during holiday sync: $e');
+  //     // You can also show a user-friendly message using a dialog or snackbar
+  //   }
+  // }
 
   Future<void> syncShift(String? date) async {
     // Prepare the request body
@@ -1638,15 +1697,39 @@ appendLog('Service started successfully!');
     remarksController.clear();
     final holidays = await _fetchHolidays();
     print('HolidayConfiguration====>$holidays');
-
+    final String weekoffsString = await dataAccessHandler.getweekoffs();
+    print('weekoffsString==========>${weekoffsString}');
+    final Map<String, int> dayToIntMap = {
+      'Monday': 1,
+      'Tuesday': 2,
+      'Wednesday': 3,
+      'Thursday': 4,
+      'Friday': 5,
+      'Saturday': 6,
+      'Sunday': 7
+    };
+    final List<int> weekoffs = weekoffsString
+        .split(',')
+        .map((day) => day.trim())
+        .where((day) => day.isNotEmpty)
+        .map((day) => dayToIntMap[day]) // Map day names to integers
+        .where((day) => day != null && day >= 1 && day <= 7) // Only valid weekdays
+        .cast<int>()
+        .toList();
+    print('weekoffs==========>${weekoffs}');
     // Initialize selected date as today
-    DateTime potentialDate = DateTime.now();
+    DateTime potentialDate = DateTime.now().add(Duration(days: 1));
 
     // If today is a holiday, find the next non-holiday date
-    while (holidays.contains(DateTime(potentialDate.year, potentialDate.month, potentialDate.day))) {
+    // while (holidays.contains(DateTime(potentialDate.year, potentialDate.month, potentialDate.day))) {
+    //   potentialDate = potentialDate.add(const Duration(days: 1)); // Move to the next day
+    // }
+    while (
+    holidays.contains(DateTime(potentialDate.year, potentialDate.month, potentialDate.day)) ||
+        weekoffs.contains(potentialDate.weekday)
+    ) {
       potentialDate = potentialDate.add(const Duration(days: 1)); // Move to the next day
     }
-
     // Update the selected date to the next available working date (if today is a holiday)
     setState(() {
       selectedDatemark = potentialDate;
@@ -1884,7 +1967,7 @@ appendLog('Service started successfully!');
                               remarksController.clear();  // Clear the remark TextField
                               setState(() {
                                 selectedOptionbottom = null; // Reset radio button selection
-                                selectedDatemark = DateTime.now(); // Reset to current date
+                                selectedDatemark = DateTime.now().add(Duration(days: 1)); // Reset to current date
                               });
 
                               // Close the bottom sheet after submission
@@ -1997,6 +2080,7 @@ appendLog('Service started successfully!');
   //   }
   // }
 
+
   Future<void> _selectDate(BuildContext context, StateSetter setModalState) async {
     // Fetch the list of holiday dates
     final List<DateTime> holidays = await _fetchHolidays();
@@ -2029,7 +2113,7 @@ appendLog('Service started successfully!');
     print('weekoffs==========>${weekoffs}');
 
     // Initialize selected date as today
-    DateTime potentialDate = DateTime.now();
+    DateTime potentialDate = DateTime.now().add(Duration(days: 1));
 
     // Check if today is a holiday or week-off; if so, find the next working day
     while (
@@ -2050,7 +2134,7 @@ appendLog('Service started successfully!');
       context: context,
       initialEntryMode: DatePickerEntryMode.calendarOnly,
       initialDate: selectedDatemark,
-      firstDate: DateTime.now(),
+      firstDate: DateTime.now().add(Duration(days: 1)),
       lastDate: DateTime(2101),
       selectableDayPredicate: (DateTime date) {
         // Check if the date is a holiday or a week-off day
@@ -2096,55 +2180,90 @@ appendLog('Service started successfully!');
     // Convert each holiday date to DateTime and return the list
     return result.map((row) => DateTime.parse(row['Date'])).toList();
   }
+  Future<void> syncAllUserWeekOffs(String? date, int count) async {
+    for (int pageIndex = 1; pageIndex <= count; pageIndex++) {
+      print('Syncing pageIndex: $pageIndex');
 
-  Future<void> syncUserWeekOff(String? date) async {
-    // Prepare the request body
-    Map<String, dynamic> syncDataMap = {
-      "date": date, // `null` if date is null
-      "userId": '$userID', // Ensure userID is fetched from preferences
-      "pageIndex": 1,
-    };
+      Map<String, dynamic> syncDataMap = {
+        "date": date, // `null` if date is null
+        "userId": '$userID', // Ensure userID is fetched from preferences
+        "pageIndex": pageIndex,
+      };
 
-    print('===========>Request Date: $date');
-    print('===========>Request Body: ${jsonEncode(syncDataMap)}');
+      try {
+        final response = await http.post(
+          Uri.parse('$baseUrl${SyncUserWeekOffXref}'),
+          headers: <String, String>{
+            'Content-Type': 'application/json; charset=UTF-8',
+          },
+          body: jsonEncode(syncDataMap),
+        );
 
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl${SyncUserWeekOffXref}'), // Replace with the actual endpoint
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: jsonEncode(syncDataMap), // Pass the prepared map here
-      );
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
 
-      if (response.statusCode == 200) {
-        // Parse the response
-        final data = jsonDecode(response.body);
+          if (data['isSuccess']) {
+            print("Received data for pageIndex: $pageIndex");
 
-        // Check if the response is successful
-        if (data['isSuccess']) {
-          print("Insert the list of user week offs into the database");
-
-          // Insert or update the list of user week offs into the database
-          await insertUserWeekOffData(data['listResult']);
+            // Insert received data into the database
+            await insertUserWeekOffData(data['listResult']);
+          } else {
+            print("Failed for pageIndex: $pageIndex - ${data['endUserMessage']}");
+          }
         } else {
-          print("Failed to retrieve user week offs: ${data['endUserMessage']}");
+          throw Exception('Failed to sync user week off data from server for pageIndex: $pageIndex');
         }
-      } else {
-        throw Exception('Failed to sync user week off data from server');
+      } catch (e) {
+        print('Error syncing user week off for pageIndex $pageIndex: $e');
       }
-    } catch (e) {
-      print('Error during user week off sync: $e');
     }
+
+    // Show success message after all pages are processed
+    CommonStyles.showCustomToastMessageLong('Sync is Successful', context, 0, 3);
   }
 
-  // Future<void> insertUserWeekOffData(List<dynamic> listResult) async {
-  //   await dataAccessHandler.insertOrUpdateData(
-  //     'UserWeekOffXref', // Table name
-  //     List<Map<String, dynamic>>.from(listResult), // Ensure the data is in the correct format
-  //     'Code', // Assuming 'id' is the primary key field
-  //   );
+  // Future<void> syncUserWeekOff(String? date) async {
+  //   // Prepare the request body
+  //   Map<String, dynamic> syncDataMap = {
+  //     "date": date, // `null` if date is null
+  //     "userId": '$userID', // Ensure userID is fetched from preferences
+  //     "pageIndex": 1,
+  //   };
+  //
+  //   print('===========>Request Date: $date');
+  //   print('===========>Request Body: ${jsonEncode(syncDataMap)}');
+  //
+  //   try {
+  //     final response = await http.post(
+  //       Uri.parse('$baseUrl${SyncUserWeekOffXref}'), // Replace with the actual endpoint
+  //       headers: <String, String>{
+  //         'Content-Type': 'application/json; charset=UTF-8',
+  //       },
+  //       body: jsonEncode(syncDataMap), // Pass the prepared map here
+  //     );
+  //
+  //     if (response.statusCode == 200) {
+  //       // Parse the response
+  //       final data = jsonDecode(response.body);
+  //
+  //       // Check if the response is successful
+  //       if (data['isSuccess']) {
+  //         print("Insert the list of user week offs into the database");
+  //
+  //         // Insert or update the list of user week offs into the database
+  //         await insertUserWeekOffData(data['listResult']);
+  //         CommonStyles.showCustomToastMessageLong('Sync is Successful', context, 0, 3);
+  //       } else {
+  //         print("Failed to retrieve user week offs: ${data['endUserMessage']}");
+  //       }
+  //     } else {
+  //       throw Exception('Failed to sync user week off data from server');
+  //     }
+  //   } catch (e) {
+  //     print('Error during user week off sync: $e');
+  //   }
   // }
+
   Future<void> insertUserWeekOffData(List<dynamic> listResult) async {
     final dataAccessHandler =
     Provider.of<DataAccessHandler>(context, listen: false);

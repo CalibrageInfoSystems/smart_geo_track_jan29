@@ -137,12 +137,18 @@ class CustomLeadTemplate extends StatelessWidget {
     }
     return Container(
       padding: EdgeInsets.only(bottom: isSpaceNeeded ? 5 : 0),
-      child: Flexible(
-        child: Text(data,
-            style: dataStyle ??
-                CommonStyles.txStyF16CbFF5
-                    .copyWith(color: CommonStyles.dataTextColor)),
-      ),
+      child: Text(data,
+          style: dataStyle ??
+              CommonStyles.txStyF16CbFF5
+                  .copyWith(color: CommonStyles.dataTextColor)),
+
+      //              Flexible(
+      //   child: Text(data,
+      //       style: dataStyle ??
+      //           CommonStyles.txStyF16CbFF5
+      //               .copyWith(color: CommonStyles.dataTextColor)),
+      // ),
+
     );
   }
 }

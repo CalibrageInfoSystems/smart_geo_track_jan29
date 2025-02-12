@@ -173,6 +173,45 @@ class DataAccessHandler with ChangeNotifier {
   //     }
   //   });
   // }
+  // Future<void> insertOrUpdateweekxrefData(
+  //     String tableName, List<Map<String, dynamic>> data, String idField) async {
+  //   final db = await DatabaseHelper.instance.database;
+  //
+  //   await db.transaction((txn) async {
+  //     for (var item in data) {
+  //       print('Processing item: ${item.toString()}');
+  //
+  //       // Check if a record with the same Code exists
+  //       var existingRecord = await txn.query(
+  //         tableName,
+  //         where: 'code = ?', // Only checking by "code" to ensure uniqueness
+  //         whereArgs: [item['code']],
+  //       );
+  //
+  //       print('Existing record: ${existingRecord.toString()}');
+  //
+  //       if (existingRecord.isNotEmpty) {
+  //         // If record exists, update it
+  //         await txn.update(
+  //           tableName,
+  //           item,
+  //           where: 'code = ?', // Update by unique "code"
+  //           whereArgs: [item['code']],
+  //         );
+  //         print('Updated existing record with code = ${item['code']}');
+  //       } else {
+  //         // If the record does not exist, insert it
+  //         if (item['serverUpdatedStatus'] == false) {
+  //           item['serverUpdatedStatus'] = 1;
+  //         }
+  //
+  //         await txn.insert(tableName, item);
+  //         print('Inserted new record with code = ${item['code']}');
+  //       }
+  //     }
+  //   });
+  // }
+
   Future<void> insertOrUpdateweekxrefData(
       String tableName, List<Map<String, dynamic>> data, String idField) async {
     final db = await DatabaseHelper.instance.database;
@@ -196,8 +235,8 @@ class DataAccessHandler with ChangeNotifier {
           await txn.update(
             tableName,
             item,
-            where: '$idField = ? AND code = ?',
-            whereArgs: [item[idField], item['code']],
+            where: 'code = ?', // Update by unique "code"
+            whereArgs: [item['code']],
           );
           print(
               'Updated existing record in $tableName with $idField = ${item[idField]} and code = ${item['code']}');
@@ -215,6 +254,50 @@ class DataAccessHandler with ChangeNotifier {
       }
     });
   }
+
+
+  // Future<void> insertOrUpdateweekxrefData(
+  //     String tableName, List<Map<String, dynamic>> data, String idField) async {
+  //   final db = await DatabaseHelper.instance.database;
+  //
+  //   await db.transaction((txn) async {
+  //     for (var item in data) {
+  //       print('Processing item: ${item.toString()}');
+  //       print('Processing item: ${item['code']}');
+  //
+  //       // Check if a record with the same ID and Code exists
+  //       var existingRecord = await txn.query(
+  //         tableName,
+  //         where: '$idField = ? AND code = ?',
+  //         whereArgs: [item[idField], item['code']], // Fixed argument passing
+  //       );
+  //
+  //       print('Existing record: ${existingRecord.toString()}');
+  //
+  //       if (existingRecord.isNotEmpty) {
+  //         // If the record exists, update it
+  //         await txn.update(
+  //           tableName,
+  //           item,
+  //           where: '$idField = ? AND code = ?',
+  //           whereArgs: [item[idField], item['code']],
+  //         );
+  //         print(
+  //             'Updated existing record in $tableName with $idField = ${item[idField]} and code = ${item['code']}');
+  //       } else {
+  //         // If the record does not exist, insert it
+  //         // Ensure "serverUpdatedStatus" is set to 1 if it's false
+  //         if (item['serverUpdatedStatus'] == false) {
+  //           item['serverUpdatedStatus'] = 1;
+  //         }
+  //
+  //         await txn.insert(tableName, item);
+  //         print(
+  //             'Inserted new record into $tableName with $idField = ${item[idField]} and code = ${item['code']}');
+  //       }
+  //     }
+  //   });
+  // }
 
   // Future<void> insertOrUpdateweekxrefData(
   //     String tableName, List<Map<String, dynamic>> data, String idField) async {
@@ -629,6 +712,27 @@ class DataAccessHandler with ChangeNotifier {
     return result.isNotEmpty;
   }
 // Method to check if the current date is a holiday (excluded date)
+//   Future<bool> checkIfExcludedDate() async {
+//     // Get a reference to the database
+//     final db = await DatabaseHelper.instance.database;
+//
+//     // Get the current date in 'YYYY-MM-DD' format
+//     String currentDate = getCurrentDate();
+//
+//     // SQL query to check if the current date is a holiday
+//     String query = 'SELECT * FROM HolidayConfiguration WHERE DATE(Date) = ?';
+//
+//     // Print the query and the parameter (currentDate)
+//     print("Executing query: $query with parameter: $currentDate");
+//     appendLog("Executing query _checkIfExcludedDate: $query with parameter: $currentDate");
+//
+//     // Query the HolidayConfiguration table for the current date
+//     final List<Map<String, dynamic>> result = await db.rawQuery(query, [currentDate]);
+//
+//     // If the result is not empty, the current date is a holiday (excluded)
+//     return result.isNotEmpty;
+//   }
+
   Future<bool> checkIfExcludedDate() async {
     // Get a reference to the database
     final db = await DatabaseHelper.instance.database;
@@ -636,8 +740,8 @@ class DataAccessHandler with ChangeNotifier {
     // Get the current date in 'YYYY-MM-DD' format
     String currentDate = getCurrentDate();
 
-    // SQL query to check if the current date is a holiday
-    String query = 'SELECT * FROM HolidayConfiguration WHERE DATE(Date) = ?';
+    // SQL query to check if the current date is a holiday and is active
+    String query = 'SELECT * FROM HolidayConfiguration WHERE DATE(Date) = ? AND IsActive = 1';
 
     // Print the query and the parameter (currentDate)
     print("Executing query: $query with parameter: $currentDate");
@@ -649,7 +753,6 @@ class DataAccessHandler with ChangeNotifier {
     // If the result is not empty, the current date is a holiday (excluded)
     return result.isNotEmpty;
   }
-
 
 // Fetch the ShiftFromTime from the UserInfos table
   Future<String> getShiftFromTime() async {
