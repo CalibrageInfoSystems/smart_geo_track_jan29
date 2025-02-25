@@ -23,8 +23,8 @@ class DataSyncHelper {
     String currentDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
     print('currentDate===21: $currentDate');
 
-    Map<String, String> syncDataMap = {
-      "lastUpdatedDate": "2024-09-10",
+    Map<String, dynamic> syncDataMap = {
+      "lastUpdatedDate": null,
     };
 
     print('syncDataMap===21: $syncDataMap');

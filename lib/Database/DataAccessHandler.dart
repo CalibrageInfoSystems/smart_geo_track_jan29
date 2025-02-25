@@ -396,6 +396,52 @@ class DataAccessHandler with ChangeNotifier {
       return null;
     }
   }
+  // Future<List<String>> getSingleListData(String query) async {
+  //   debugPrint("@@@ query 400===$query");
+  //   List<String> genericData = [];
+  //   final db = await DatabaseHelper.instance.database;// Ensure you have a method to get the database instance.
+  //
+  //   try {
+  //     List<Map<String, dynamic>> result = await db.rawQuery(query);
+  //     for (var row in result) {
+  //       genericData.add(row.values.first.toString()); // Fetching the first column value
+  //     }
+  //   } catch (e) {
+  //     print("Database Error: $e");
+  //   } finally {
+  //     //await db.close(); // Close the database after query execution
+  //   }
+  //
+  //   return genericData;
+  // }
+
+  Future<List<int>> getSingleListData(String query) async {
+    debugPrint("@@@ query 400 === $query");
+
+    List<int> genericData = [];
+    final db = await DatabaseHelper.instance.database; // Get database instance
+
+    try {
+      List<Map<String, dynamic>> result = await db.rawQuery(query);
+
+      for (var row in result) {
+        var value = row.values.first; // Fetch first column value
+
+        if (value is int) {
+          genericData.add(value); // Directly add if int
+        } else if (value is String) {
+          genericData.add(int.tryParse(value) ?? 0); // Convert if string
+        }
+      }
+
+      debugPrint("Updated List: $genericData"); // Debugging output
+    } catch (e) {
+      debugPrint("Database Error: $e");
+    }
+
+    return genericData; // Return updated list
+  }
+
   Future<List<Map<String, dynamic>>> getLocationByLatLong(
       double latitude, double longitude) async {
     // Query to check if the location with the same latitude and longitude exists
